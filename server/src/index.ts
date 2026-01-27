@@ -6,7 +6,7 @@ import { prepare } from './routes/prepare';
 import { status } from './routes/status';
 import { holdings } from './routes/holdings';
 import { initXrplClient, startXrplListener, getOperatorAddress } from './lib/xrpl';
-import { generateFlareWallet, getOperatorFlareBalance } from './lib/flare';
+import { generateFlareWallet, getOperatorFlareBalance, getPlatformFXRPBalance, FXRP_TOKEN_ADDRESS } from './lib/flare';
 
 const app = new Hono();
 
@@ -38,6 +38,7 @@ app.get('/api/operator', async (c) => {
   try {
     const xrplAddress = getOperatorAddress();
     let flareBalance = '0';
+    let fxrpBalance = '0';
 
     try {
       flareBalance = await getOperatorFlareBalance();
@@ -45,9 +46,17 @@ app.get('/api/operator', async (c) => {
       // Flare wallet not configured
     }
 
+    try {
+      fxrpBalance = await getPlatformFXRPBalance();
+    } catch {
+      // FXRP token not configured
+    }
+
     return c.json({
       xrplAddress,
       flareBalance,
+      fxrpBalance,
+      fxrpTokenAddress: FXRP_TOKEN_ADDRESS,
     });
   } catch (error: any) {
     return c.json({ error: error.message }, 500);
@@ -86,7 +95,7 @@ async function init() {
 
   // Check Flare operator wallet
   if (!process.env.FLARE_OPERATOR_PRIVATE_KEY) {
-    console.log('\n[Init] ⚠️  Flare operator wallet not configured.');
+    console.log('\n[Init] Flare operator wallet not configured.');
     console.log('[Init] Generate one with POST /api/generate-wallets');
     console.log('[Init] Then fund it with C2FLR from: https://faucet.flare.network');
   } else {
@@ -95,6 +104,19 @@ async function init() {
       console.log(`[Init] Flare Operator Balance: ${balance} C2FLR`);
     } catch (error) {
       console.log('[Init] Could not fetch Flare balance');
+    }
+  }
+
+  // Check FXRP token configuration
+  if (!process.env.FXRP_TOKEN_ADDRESS || FXRP_TOKEN_ADDRESS === '0x0000000000000000000000000000000000000000') {
+    console.log('\n[Init] FXRP token address not configured.');
+    console.log('[Init] Set FXRP_TOKEN_ADDRESS in .env to enable FXRP transfers to smart accounts.');
+  } else {
+    try {
+      const fxrpBalance = await getPlatformFXRPBalance();
+      console.log(`[Init] Platform FXRP Balance: ${fxrpBalance} FXRP`);
+    } catch (error) {
+      console.log('[Init] Could not fetch FXRP balance');
     }
   }
 

@@ -10,6 +10,7 @@ const COSTON2_RPC = process.env.FLARE_RPC_URL || 'https://coston2-api.flare.netw
 export const FLARE_CONTRACT_REGISTRY = '0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019' as const;
 export const MASTER_ACCOUNT_CONTROLLER = '0x3ab31E2d943d1E8F47B275605E50Ff107f2F8393' as const;
 export const FIRELIGHT_VAULT = '0x91Bfe6A68aB035DFebb6A770FFfB748C03C0E40B' as const;
+export const FXRP_TOKEN_ADDRESS = (process.env.FXRP_TOKEN_ADDRESS || '0x0000000000000000000000000000000000000000') as `0x${string}`;
 
 // ABIs
 const CONTRACT_REGISTRY_ABI = parseAbi([
@@ -27,6 +28,8 @@ const ERC20_ABI = parseAbi([
   'function balanceOf(address owner) view returns (uint256)',
   'function decimals() view returns (uint8)',
   'function symbol() view returns (string)',
+  'function transfer(address to, uint256 amount) returns (bool)',
+  'function approve(address spender, uint256 amount) returns (bool)',
 ]);
 
 // Coston2 chain definition
@@ -175,6 +178,93 @@ export async function getOperatorFlareBalance(): Promise<string> {
   return formatTokenBalance(balance, 18);
 }
 
+/**
+ * Transfer FXRP tokens from platform wallet to a recipient address
+ * @param toAddress - The recipient's address (user's Smart Account)
+ * @param amountXRP - Amount in XRP (will be converted to FXRP with correct decimals)
+ * @returns Transaction hash
+ */
+export async function transferFXRP(toAddress: Address, amountXRP: string): Promise<Hash> {
+  if (FXRP_TOKEN_ADDRESS === '0x0000000000000000000000000000000000000000') {
+    throw new Error('FXRP_TOKEN_ADDRESS not configured. Set it in environment variables.');
+  }
+
+  const wallet = getWalletClient();
+  const account = getOperatorAccount();
+  const client = getPublicClient();
+
+  // Get actual decimals from token contract (FXRP uses 6 decimals like XRP)
+  const decimals = await client.readContract({
+    address: FXRP_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'decimals',
+  }) as number;
+
+  const amount = BigInt(Math.floor(parseFloat(amountXRP) * 10 ** decimals));
+
+  console.log(`[Flare] Transferring ${amountXRP} FXRP to ${toAddress} (decimals: ${decimals})`);
+
+  // Check platform's FXRP balance first
+  const platformBalance = await client.readContract({
+    address: FXRP_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [account.address],
+  }) as bigint;
+
+  if (platformBalance < amount) {
+    const balanceStr = formatTokenBalance(platformBalance, decimals);
+    throw new Error(`Insufficient FXRP balance. Platform has ${balanceStr} FXRP, need ${amountXRP} FXRP`);
+  }
+
+  // Simulate the transfer first
+  const { request } = await client.simulateContract({
+    address: FXRP_TOKEN_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'transfer',
+    args: [toAddress, amount],
+    account,
+  });
+
+  // Execute the transfer
+  const hash = await wallet.writeContract(request);
+  console.log(`[Flare] FXRP transfer submitted: ${hash}`);
+
+  // Wait for confirmation
+  const receipt = await client.waitForTransactionReceipt({ hash });
+  console.log(`[Flare] FXRP transfer confirmed in block ${receipt.blockNumber}`);
+
+  return hash;
+}
+
+/**
+ * Get platform's FXRP balance
+ */
+export async function getPlatformFXRPBalance(): Promise<string> {
+  if (FXRP_TOKEN_ADDRESS === '0x0000000000000000000000000000000000000000') {
+    return '0';
+  }
+
+  const client = getPublicClient();
+  const account = getOperatorAccount();
+
+  const [balance, decimals] = await Promise.all([
+    client.readContract({
+      address: FXRP_TOKEN_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: 'balanceOf',
+      args: [account.address],
+    }),
+    client.readContract({
+      address: FXRP_TOKEN_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: 'decimals',
+    }),
+  ]);
+
+  return formatTokenBalance(balance as bigint, decimals as number);
+}
+
 function formatTokenBalance(balance: bigint, decimals: number): string {
   const divisor = BigInt(10 ** decimals);
   const integerPart = balance / divisor;
@@ -189,6 +279,14 @@ function xrplAddressToBytes(xrplAddress: string): `0x${string}` {
   const accountId = decodeAccountID(xrplAddress);
   const hexAddress = Buffer.from(accountId).toString('hex');
   return `0x${hexAddress}` as `0x${string}`;
+}
+
+/**
+ * Convert XRPL address to Flare/EVM address format
+ * Uses the 20-byte account ID from the XRPL address as the Flare address
+ */
+export function xrplAddressToFlareAddress(xrplAddress: string): Address {
+  return xrplAddressToBytes(xrplAddress) as Address;
 }
 
 // Generate a new Flare operator wallet

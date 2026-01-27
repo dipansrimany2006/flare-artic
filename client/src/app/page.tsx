@@ -1,11 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useWalletStore } from '@/store/wallet';
 import { checkWalletConnection } from '@/lib/gemwallet';
-import { getStrategies, type Strategy } from '@/lib/api';
 import { WalletConnect } from '@/components/WalletConnect';
-import { StrategyCard } from '@/components/StrategyCard';
 import { AmountInput } from '@/components/AmountInput';
 import { TransactionFlow } from '@/components/TransactionFlow';
 import { Holdings } from '@/components/Holdings';
@@ -15,17 +13,13 @@ export default function Home() {
   const {
     isConnected,
     currentStep,
-    selectedStrategy,
     error,
     setWalletState,
-    setSelectedStrategy,
     setCurrentStep,
     setError,
     reset,
+    disconnect,
   } = useWalletStore();
-
-  const [strategies, setStrategies] = useState<Strategy[]>([]);
-  const [isLoadingStrategies, setIsLoadingStrategies] = useState(true);
 
   // Check wallet connection on mount
   useEffect(() => {
@@ -38,32 +32,12 @@ export default function Home() {
     checkConnection();
   }, [setWalletState]);
 
-  // Fetch strategies
-  useEffect(() => {
-    const fetchStrategies = async () => {
-      try {
-        const data = await getStrategies();
-        setStrategies(data);
-      } catch (error) {
-        console.error('Failed to fetch strategies:', error);
-      } finally {
-        setIsLoadingStrategies(false);
-      }
-    };
-    fetchStrategies();
-  }, []);
-
-  const handleStrategySelect = (strategy: Strategy) => {
-    if (!strategy.enabled) return;
-    setSelectedStrategy(strategy);
-  };
-
   const handleContinueToConfirm = () => {
     setCurrentStep('confirm');
   };
 
-  const handleBackToStrategy = () => {
-    setSelectedStrategy(null);
+  const handleBackToConnect = () => {
+    disconnect();
   };
 
   const handleBackToAmount = () => {
@@ -82,7 +56,7 @@ export default function Home() {
   const handleDismissError = () => {
     setError(null);
     if (isConnected) {
-      setCurrentStep('select');
+      setCurrentStep('amount');
     }
   };
 
@@ -132,8 +106,8 @@ export default function Home() {
               {/* Not Connected */}
               {currentStep === 'connect' && (
                 <div className="text-center py-12">
-                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
-                    <svg className="w-10 h-10 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-orange-100 to-purple-100 dark:from-orange-900/30 dark:to-purple-900/30 rounded-full flex items-center justify-center">
+                    <svg className="w-10 h-10 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                     </svg>
                   </div>
@@ -141,7 +115,7 @@ export default function Home() {
                     1-Click Yield on Flare
                   </h1>
                   <p className="text-zinc-600 dark:text-zinc-400 mb-8 max-w-md mx-auto">
-                    Connect your XRPL wallet to start earning yield on your XRP through Flare&apos;s DeFi ecosystem.
+                    Connect your XRPL wallet to deposit XRP and earn yield through Firelight Staking and Upshift Vault.
                   </p>
                   <WalletConnect />
                   <p className="mt-6 text-xs text-zinc-500 dark:text-zinc-500">
@@ -158,53 +132,18 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Select Strategy */}
-              {currentStep === 'select' && (
-                <div>
-                  <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-                    Select a Yield Strategy
-                  </h2>
-                  <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                    Choose how you want to earn yield on your XRP.
-                  </p>
-
-                  {isLoadingStrategies ? (
-                    <div className="space-y-4">
-                      {[1, 2].map((i) => (
-                        <div key={i} className="animate-pulse p-6 rounded-xl border-2 border-zinc-200 dark:border-zinc-700">
-                          <div className="h-6 bg-zinc-200 dark:bg-zinc-700 rounded w-1/3 mb-4" />
-                          <div className="h-4 bg-zinc-200 dark:bg-zinc-700 rounded w-2/3 mb-4" />
-                          <div className="h-8 bg-zinc-200 dark:bg-zinc-700 rounded w-1/4" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {strategies.map((strategy) => (
-                        <StrategyCard
-                          key={strategy.id}
-                          strategy={strategy}
-                          isSelected={selectedStrategy?.id === strategy.id}
-                          onSelect={() => handleStrategySelect(strategy)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Enter Amount */}
+              {/* Enter Amount & Allocation */}
               {currentStep === 'amount' && (
                 <div>
                   <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-100 mb-2">
-                    Enter Amount
+                    Deposit & Allocate
                   </h2>
                   <p className="text-zinc-600 dark:text-zinc-400 mb-6">
-                    How much XRP would you like to deposit?
+                    Enter amount and choose how to split between protocols.
                   </p>
                   <AmountInput
                     onContinue={handleContinueToConfirm}
-                    onBack={handleBackToStrategy}
+                    onBack={handleBackToConnect}
                   />
                 </div>
               )}
@@ -236,7 +175,7 @@ export default function Home() {
               </h3>
               <ol className="space-y-4">
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center text-sm font-medium">
                     1
                   </span>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -244,30 +183,61 @@ export default function Home() {
                   </p>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center text-sm font-medium">
                     2
                   </span>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Select a yield strategy and enter amount
+                    Enter amount and allocate between Firelight & Upshift
                   </p>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full flex items-center justify-center text-sm font-medium">
                     3
                   </span>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Sign one transaction - we handle the rest
+                    Sign one transaction - we handle the bridging
                   </p>
                 </li>
                 <li className="flex gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 rounded-full flex items-center justify-center text-sm font-medium">
                     4
                   </span>
                   <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                    Earn yield automatically in your Flare Smart Account
+                    Earn yield automatically from both protocols
                   </p>
                 </li>
               </ol>
+            </div>
+
+            {/* Protocols Info */}
+            <div className="p-6 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
+              <h3 className="text-sm font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-4">
+                Supported Protocols
+              </h3>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Firelight Staking</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">8.5% APY</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Upshift Vault</p>
+                    <p className="text-xs text-green-600 dark:text-green-400">12.3% APY</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Powered By */}

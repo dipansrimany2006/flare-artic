@@ -27,9 +27,9 @@ prepare.post('/', zValidator('json', prepareSchema), async (c) => {
     return c.json({ error: 'Strategy is not enabled' }, 400);
   }
 
-  // Validate amount (minimum 1 XRP for testing)
-  if (amountXRP < 1) {
-    return c.json({ error: 'Minimum amount is 1 XRP' }, 400);
+  // Validate amount (minimum 0.1 XRP for testing)
+  if (amountXRP < 0.1) {
+    return c.json({ error: 'Minimum amount is 0.1 XRP' }, 400);
   }
 
   try {
@@ -40,7 +40,7 @@ prepare.post('/', zValidator('json', prepareSchema), async (c) => {
     // For Firelight: use Firelight vault address
     // Vault ID is 0 for default vault
     // Lots = amount in XRP (simplified, real implementation would calculate lots)
-    const lots = Math.floor(amountXRP); // 1 lot = 1 XRP for simplicity
+    const lots = Math.round(amountXRP * 10); // 1 lot = 0.1 XRP for testing
     const memo = encodeInstruction(
       'firelight',
       FIRELIGHT_VAULT,

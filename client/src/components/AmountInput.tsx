@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useWalletStore } from '@/store/wallet';
+import { useWalletStore, PROTOCOLS } from '@/store/wallet';
+import { AllocationSlider } from './AllocationSlider';
 
 interface AmountInputProps {
   onContinue: () => void;
@@ -9,7 +10,7 @@ interface AmountInputProps {
 }
 
 export function AmountInput({ onContinue, onBack }: AmountInputProps) {
-  const { amount, setAmount, selectedStrategy } = useWalletStore();
+  const { amount, setAmount, allocation } = useWalletStore();
   const [error, setError] = useState<string | null>(null);
 
   const handleAmountChange = (value: string) => {
@@ -27,8 +28,8 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
       return;
     }
 
-    if (numAmount < 1) {
-      setError('Minimum amount is 1 XRP');
+    if (numAmount < 0.1) {
+      setError('Minimum amount is 0.1 XRP');
       return;
     }
 
@@ -36,6 +37,12 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
   };
 
   const presetAmounts = ['10', '50', '100', '500'];
+  const numAmount = parseFloat(amount) || 0;
+
+  // Calculate weighted average APY
+  const firelightApy = parseFloat(PROTOCOLS.firelight.apy);
+  const upshiftApy = parseFloat(PROTOCOLS.upshift.apy);
+  const weightedApy = (firelightApy * allocation.firelight / 100) + (upshiftApy * allocation.upshift / 100);
 
   return (
     <div className="space-y-6">
@@ -89,18 +96,22 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
         ))}
       </div>
 
-      {selectedStrategy && (
+      {/* Allocation Slider */}
+      {numAmount > 0 && <AllocationSlider />}
+
+      {/* Summary */}
+      {numAmount > 0 && (
         <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">Strategy</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">Total Deposit</span>
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {selectedStrategy.name}
+              {amount} XRP
             </span>
           </div>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">Expected APY</span>
+            <span className="text-sm text-zinc-600 dark:text-zinc-400">Blended APY</span>
             <span className="text-sm font-medium text-green-600 dark:text-green-400">
-              {selectedStrategy.apy}
+              {weightedApy.toFixed(1)}%
             </span>
           </div>
           <div className="flex justify-between items-center">

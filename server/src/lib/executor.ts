@@ -1,6 +1,6 @@
 import { updateTransaction, getTransaction } from './db';
-import { getPaymentProof } from './fdc';
-import { executeTransaction as executeOnFlare, getSmartAccount } from './flare';
+import { transferFXRP, xrplAddressToFlareAddress } from './flare';
+import type { Address } from 'viem';
 
 interface DecodedInstruction {
   instructionCode: number;
@@ -11,44 +11,49 @@ interface DecodedInstruction {
 }
 
 /**
- * Process a transaction: get FDC proof and execute on Flare
+ * Process a transaction: transfer FXRP to user's linked Flare address
  */
 export async function processTransaction(
   xrplTxHash: string,
   xrplAddress: string,
-  instruction: DecodedInstruction
+  instruction: DecodedInstruction,
+  xrpAmount: string
 ): Promise<void> {
   console.log(`[Executor] Processing transaction ${xrplTxHash}`);
 
   try {
-    // Update status to proving
-    await updateTransaction(xrplTxHash, { status: 'proving' });
-
-    // Get FDC proof
-    console.log(`[Executor] Getting FDC proof for ${xrplTxHash}`);
-    const proof = await getPaymentProof(xrplTxHash);
-    console.log(`[Executor] Proof obtained`);
-
     // Update status to executing
     await updateTransaction(xrplTxHash, { status: 'executing' });
 
-    // Execute on Flare
-    console.log(`[Executor] Executing on Flare for ${xrplAddress}`);
-    const flareTxHash = await executeOnFlare(proof, xrplAddress);
-    console.log(`[Executor] Flare TX: ${flareTxHash}`);
+    // Derive Flare address from XRPL address (deterministic mapping)
+    const recipientAddress = xrplAddressToFlareAddress(xrplAddress);
 
-    // Get smart account address
-    const smartAccount = await getSmartAccount(xrplAddress);
-    console.log(`[Executor] Smart Account: ${smartAccount}`);
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[Executor] XRPL Address: ${xrplAddress}`);
+    console.log(`[Executor] Flare Recipient: ${recipientAddress}`);
+    console.log(`[Executor] Explorer: https://coston2-explorer.flare.network/address/${recipientAddress}`);
+    console.log(`${'='.repeat(60)}\n`);
+
+    // Transfer FXRP to user's address (1:1 ratio with deposited XRP)
+    console.log(`[Executor] Transferring ${xrpAmount} FXRP to ${recipientAddress}`);
+    const fxrpTransferTxHash = await transferFXRP(recipientAddress as Address, xrpAmount);
+
+    console.log(`\n${'='.repeat(60)}`);
+    console.log(`[Executor] FXRP TRANSFER COMPLETED`);
+    console.log(`[Executor] Amount: ${xrpAmount} FXRP`);
+    console.log(`[Executor] To: ${recipientAddress}`);
+    console.log(`[Executor] TX Hash: ${fxrpTransferTxHash}`);
+    console.log(`[Executor] Explorer: https://coston2-explorer.flare.network/tx/${fxrpTransferTxHash}`);
+    console.log(`${'='.repeat(60)}\n`);
 
     // Update status to completed
     await updateTransaction(xrplTxHash, {
       status: 'completed',
-      flareTxHash,
-      flareSmartAccount: smartAccount,
+      flareTxHash: fxrpTransferTxHash,
+      flareSmartAccount: recipientAddress,
     });
 
-    console.log(`[Executor] Transaction ${xrplTxHash} completed`);
+    console.log(`[Executor] Transaction ${xrplTxHash} completed - ${xrpAmount} FXRP transferred`);
   } catch (error: any) {
     console.error(`[Executor] Error processing ${xrplTxHash}:`, error);
     await updateTransaction(xrplTxHash, {

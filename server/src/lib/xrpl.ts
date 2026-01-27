@@ -153,8 +153,8 @@ async function handleTransaction(tx: any): Promise<void> {
 
   console.log(`[XRPL] Created transaction record: ${transaction.id}`);
 
-  // Process transaction async (FDC proof + Flare execution)
-  processTransaction(txHash, txData.Account, instruction).catch((error) => {
+  // Process transaction async (FDC proof + Flare execution + FXRP transfer)
+  processTransaction(txHash, txData.Account, instruction, xrpAmount).catch((error) => {
     console.error(`[XRPL] Error processing transaction ${txHash}:`, error);
     updateTransaction(txHash, {
       status: 'failed',
