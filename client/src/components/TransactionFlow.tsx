@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWalletStore } from '@/store/wallet';
+import { useWalletStore, PROTOCOLS } from '@/store/wallet';
 import { prepareTransaction, getTransactionStatus } from '@/lib/api';
 import { signAndSubmitPayment, getExplorerUrl } from '@/lib/gemwallet';
 
@@ -14,8 +14,8 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
   const {
     address,
     network,
-    selectedStrategy,
     amount,
+    allocation,
     currentStep,
     txHash,
     txStatus,
@@ -33,13 +33,23 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
     estimatedFees: { totalXRP: string };
   } | null>(null);
 
+  const numAmount = parseFloat(amount) || 0;
+  const firelightAmount = (numAmount * allocation.firelight / 100).toFixed(4);
+  const upshiftAmount = (numAmount * allocation.upshift / 100).toFixed(4);
+
+  // Calculate weighted average APY
+  const firelightApy = parseFloat(PROTOCOLS.firelight.apy);
+  const upshiftApy = parseFloat(PROTOCOLS.upshift.apy);
+  const weightedApy = (firelightApy * allocation.firelight / 100) + (upshiftApy * allocation.upshift / 100);
+
   // Prepare transaction on mount
   useEffect(() => {
-    if (!address || !selectedStrategy || !amount) return;
+    if (!address || !amount) return;
 
     const prepare = async () => {
       try {
-        const result = await prepareTransaction(address, selectedStrategy.id, amount);
+        // Use firelight as default strategy for now (backend will handle allocation)
+        const result = await prepareTransaction(address, 'firelight', amount);
         setPreparedTx(result);
       } catch (error: any) {
         setError(error.message);
@@ -47,7 +57,7 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
     };
 
     prepare();
-  }, [address, selectedStrategy, amount, setError]);
+  }, [address, amount, setError]);
 
   // Poll for transaction status
   useEffect(() => {
@@ -171,30 +181,55 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
 
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-zinc-600 dark:text-zinc-400">Amount</span>
+            <span className="text-zinc-600 dark:text-zinc-400">Total Amount</span>
             <span className="font-semibold text-zinc-900 dark:text-zinc-100">
               {amount} XRP
             </span>
           </div>
-          <div className="flex justify-between">
-            <span className="text-zinc-600 dark:text-zinc-400">Strategy</span>
-            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-              {selectedStrategy?.name}
-            </span>
+
+          {/* Allocation Breakdown */}
+          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 space-y-2">
+            <span className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">Allocation</span>
+
+            {allocation.firelight > 0 && (
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <span className="text-zinc-600 dark:text-zinc-400">Firelight ({allocation.firelight}%)</span>
+                </div>
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {firelightAmount} XRP
+                </span>
+              </div>
+            )}
+
+            {allocation.upshift > 0 && (
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded-full bg-purple-500" />
+                  <span className="text-zinc-600 dark:text-zinc-400">Upshift ({allocation.upshift}%)</span>
+                </div>
+                <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                  {upshiftAmount} XRP
+                </span>
+              </div>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-zinc-600 dark:text-zinc-400">Expected APY</span>
-            <span className="font-medium text-green-600 dark:text-green-400">
-              {selectedStrategy?.apy}
-            </span>
-          </div>
+
           <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
             <div className="flex justify-between">
-              <span className="text-zinc-600 dark:text-zinc-400">Est. Fees</span>
-              <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                ~{preparedTx ? (parseFloat(preparedTx.estimatedFees.totalXRP) - parseFloat(amount)).toFixed(4) : '0'} XRP
+              <span className="text-zinc-600 dark:text-zinc-400">Blended APY</span>
+              <span className="font-medium text-green-600 dark:text-green-400">
+                {weightedApy.toFixed(1)}%
               </span>
             </div>
+          </div>
+
+          <div className="flex justify-between">
+            <span className="text-zinc-600 dark:text-zinc-400">Est. Fees</span>
+            <span className="font-medium text-zinc-900 dark:text-zinc-100">
+              ~{preparedTx ? (parseFloat(preparedTx.estimatedFees.totalXRP) - parseFloat(amount)).toFixed(4) : '0'} XRP
+            </span>
           </div>
         </div>
       </div>
@@ -205,7 +240,7 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <p className="text-sm text-blue-800 dark:text-blue-200">
-            You&apos;ll receive stXRP tokens in your Flare Smart Account. These are liquid and can be used in other DeFi protocols.
+            Your FXRP will be deposited to the selected protocols. You&apos;ll receive yield-bearing tokens in return.
           </p>
         </div>
       </div>

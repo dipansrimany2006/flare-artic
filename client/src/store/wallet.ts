@@ -3,7 +3,28 @@
 import { create } from 'zustand';
 import type { Strategy, StatusResponse, HoldingsResponse } from '@/lib/api';
 
-export type FlowStep = 'connect' | 'select' | 'amount' | 'confirm' | 'processing' | 'success' | 'error';
+export type FlowStep = 'connect' | 'amount' | 'confirm' | 'processing' | 'success' | 'error';
+
+// Protocol addresses on Coston2
+export const PROTOCOLS = {
+  firelight: {
+    name: 'Firelight Staking',
+    address: '0x91Bfe6A68aB035DFebb6A770FFfB748C03C0E40B',
+    apy: '8.5%',
+    description: 'Liquid staking for XRP with stXRP rewards',
+  },
+  upshift: {
+    name: 'Upshift Vault',
+    address: '0xbAF89d873d198FF78E72D2745B01cBA3c6e5BE6B',
+    apy: '12.3%',
+    description: 'Automated yield optimization vault',
+  },
+} as const;
+
+export interface Allocation {
+  firelight: number; // Percentage 0-100
+  upshift: number;   // Percentage 0-100
+}
 
 interface WalletStore {
   // Wallet state
@@ -16,6 +37,7 @@ interface WalletStore {
   currentStep: FlowStep;
   selectedStrategy: Strategy | null;
   amount: string;
+  allocation: Allocation;
   txHash: string | null;
   txStatus: StatusResponse | null;
   error: string | null;
@@ -33,6 +55,7 @@ interface WalletStore {
   setCurrentStep: (step: FlowStep) => void;
   setSelectedStrategy: (strategy: Strategy | null) => void;
   setAmount: (amount: string) => void;
+  setAllocation: (allocation: Allocation) => void;
   setTxHash: (hash: string | null) => void;
   setTxStatus: (status: StatusResponse | null) => void;
   setError: (error: string | null) => void;
@@ -49,6 +72,7 @@ const initialState = {
   currentStep: 'connect' as FlowStep,
   selectedStrategy: null,
   amount: '',
+  allocation: { firelight: 50, upshift: 50 } as Allocation,
   txHash: null,
   txStatus: null,
   error: null,
@@ -64,7 +88,7 @@ export const useWalletStore = create<WalletStore>((set) => ({
       isConnected: state.isConnected,
       address: state.address,
       network: state.network,
-      currentStep: state.isConnected ? 'select' : 'connect',
+      currentStep: state.isConnected ? 'amount' : 'connect',
     }),
 
   setCurrentStep: (step) => set({ currentStep: step }),
@@ -72,10 +96,11 @@ export const useWalletStore = create<WalletStore>((set) => ({
   setSelectedStrategy: (strategy) =>
     set({
       selectedStrategy: strategy,
-      currentStep: strategy ? 'amount' : 'select',
     }),
 
   setAmount: (amount) => set({ amount }),
+
+  setAllocation: (allocation) => set({ allocation }),
 
   setTxHash: (hash) => set({ txHash: hash }),
 
@@ -93,10 +118,11 @@ export const useWalletStore = create<WalletStore>((set) => ({
     set({
       selectedStrategy: null,
       amount: '',
+      allocation: { firelight: 50, upshift: 50 },
       txHash: null,
       txStatus: null,
       error: null,
-      currentStep: 'select',
+      currentStep: 'amount',
     }),
 
   disconnect: () => set(initialState),

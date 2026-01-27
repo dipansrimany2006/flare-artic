@@ -162,26 +162,31 @@ export async function submitAttestationRequest(abiEncodedRequest: string): Promi
  * Polls DA layer directly instead of checking on-chain finalization
  */
 export async function waitForProof(
-  xrplTxHash: string,
+  abiEncodedRequest: string,
   startingRoundId: number,
   maxWaitMs: number = 300000 // 5 minutes max
 ): Promise<ProofResponse> {
   console.log(`[FDC] Waiting for proof, starting from round: ${startingRoundId}`);
+  console.log(`[FDC] Attestation rounds take 90-180 seconds to finalize...`);
 
   const startTime = Date.now();
-  const pollInterval = 10000; // 10 seconds
+  const pollInterval = 15000; // 15 seconds (to avoid rate limiting)
+
+  // Wait initial 60 seconds before first poll (rounds take 90-180s)
+  console.log(`[FDC] Waiting 60s for round to finalize...`);
+  await sleep(60000);
 
   // Check multiple rounds since we might not know exactly which round has our proof
   while (Date.now() - startTime < maxWaitMs) {
     const elapsed = Math.round((Date.now() - startTime) / 1000);
 
     // Try a range of rounds around the expected one
-    for (let roundOffset = 0; roundOffset <= 3; roundOffset++) {
+    for (let roundOffset = 0; roundOffset <= 4; roundOffset++) {
       const roundId = startingRoundId + roundOffset;
 
       try {
         console.log(`[FDC] Checking DA layer for proof in round ${roundId}... (${elapsed}s)`);
-        const proof = await fetchProofFromDALayer(xrplTxHash, roundId);
+        const proof = await fetchProofFromDALayer(abiEncodedRequest, roundId);
 
         if (proof && proof.merkleProof && proof.merkleProof.length > 0) {
           console.log(`[FDC] Proof found in round ${roundId}!`);
@@ -190,6 +195,9 @@ export async function waitForProof(
       } catch (error: any) {
         // Proof not available in this round yet
       }
+
+      // Small delay between round checks to avoid rate limiting
+      await sleep(500);
     }
 
     console.log(`[FDC] Proof not yet available, waiting... (${elapsed}s)`);
@@ -200,13 +208,11 @@ export async function waitForProof(
 }
 
 /**
- * Fetch proof from DA Layer
+ * Fetch proof from DA Layer using the abiEncodedRequest
  */
-async function fetchProofFromDALayer(xrplTxHash: string, votingRoundId: number): Promise<ProofResponse | null> {
-  const url = `${DA_LAYER_URL}/api/v0/fdc/get-proof-round-id-bytes`;
-
-  // Encode the request bytes
-  const requestBytes = encodePaymentRequest(xrplTxHash);
+async function fetchProofFromDALayer(abiEncodedRequest: string, votingRoundId: number): Promise<ProofResponse | null> {
+  // Use v1 API endpoint
+  const url = `${DA_LAYER_URL}/api/v1/fdc/proof-by-request-round-raw`;
 
   try {
     const response = await fetch(url, {
@@ -217,7 +223,7 @@ async function fetchProofFromDALayer(xrplTxHash: string, votingRoundId: number):
       },
       body: JSON.stringify({
         votingRoundId,
-        requestBytes,
+        requestBytes: abiEncodedRequest,
       }),
     });
 
@@ -292,14 +298,14 @@ export function buildExecutionProof(proofResponse: ProofResponse): `0x${string}`
  * Full attestation flow: request -> submit -> wait -> build proof
  */
 export async function getPaymentProof(xrplTxHash: string): Promise<`0x${string}`> {
-  // Step 1: Request attestation
+  // Step 1: Request attestation from verifier
   const abiEncodedRequest = await requestPaymentAttestation(xrplTxHash);
 
-  // Step 2: Submit to FDC Hub
+  // Step 2: Submit to FDC Hub on-chain
   const votingRoundId = await submitAttestationRequest(abiEncodedRequest);
 
-  // Step 3: Wait for proof
-  const proofResponse = await waitForProof(xrplTxHash, votingRoundId);
+  // Step 3: Wait for proof from DA Layer (using same abiEncodedRequest)
+  const proofResponse = await waitForProof(abiEncodedRequest, votingRoundId);
 
   // Step 4: Build execution proof
   const proof = buildExecutionProof(proofResponse);
