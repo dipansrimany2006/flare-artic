@@ -26,7 +26,7 @@ export function WalletConnect() {
 
   if (isConnected && address) {
     return (
-      <div className="flex items-center gap-3 px-4 py-2 bg-zinc-100 dark:bg-zinc-800 rounded-lg">
+      <div className="flex items-center gap-3 px-4 py-2 bg-zinc-100 dark:bg-neutral-800 border border-transparent dark:border-amber-500/20 rounded-lg">
         <div className="w-2 h-2 bg-green-500 rounded-full" />
         <div className="text-sm">
           <p className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -44,7 +44,7 @@ export function WalletConnect() {
     <button
       onClick={handleConnect}
       disabled={isLoading}
-      className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+      className="flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-black font-medium rounded-lg transition-colors"
     >
       {isLoading ? (
         <>

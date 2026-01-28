@@ -58,11 +58,11 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
             placeholder="0.00"
             className={`
               w-full px-4 py-4 pr-16 text-2xl font-semibold
-              bg-white dark:bg-zinc-800
+              bg-white dark:bg-neutral-800
               border-2 rounded-xl
               ${error
                 ? 'border-red-500 focus:border-red-500'
-                : 'border-zinc-200 dark:border-zinc-700 focus:border-blue-500'
+                : 'border-zinc-200 dark:border-neutral-700 focus:border-amber-500'
               }
               text-zinc-900 dark:text-zinc-100
               placeholder-zinc-400 dark:placeholder-zinc-500
@@ -86,8 +86,8 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
             className={`
               flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-colors
               ${amount === preset
-                ? 'bg-blue-600 text-white'
-                : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                ? 'bg-amber-500 text-black'
+                : 'bg-zinc-100 dark:bg-neutral-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-neutral-700'
               }
             `}
           >
@@ -101,7 +101,7 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
 
       {/* Summary */}
       {numAmount > 0 && (
-        <div className="p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg">
+        <div className="p-4 bg-zinc-50 dark:bg-neutral-800 rounded-lg">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-zinc-600 dark:text-zinc-400">Total Deposit</span>
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
@@ -110,7 +110,7 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
           </div>
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-zinc-600 dark:text-zinc-400">Blended APY</span>
-            <span className="text-sm font-medium text-green-600 dark:text-green-400">
+            <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
               {weightedApy.toFixed(1)}%
             </span>
           </div>
@@ -126,14 +126,14 @@ export function AmountInput({ onContinue, onBack }: AmountInputProps) {
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="flex-1 py-3 px-4 border-2 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          className="flex-1 py-3 px-4 border-2 border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-neutral-800 transition-colors"
         >
           Back
         </button>
         <button
           onClick={handleContinue}
           disabled={!amount || parseFloat(amount) <= 0}
-          className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors"
+          className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-black font-medium rounded-lg transition-colors"
         >
           Continue
         </button>

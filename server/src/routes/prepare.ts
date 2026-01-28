@@ -2,29 +2,36 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { z } from 'zod';
 import { getOperatorAddress } from '../lib/xrpl';
-import { encodeInstruction, xrpToDrops, FIRELIGHT_VAULT, FASSETS_AGENT_VAULT } from '../lib/instruction';
+import {
+  encodeInstruction,
+  encodeSplitInstruction,
+  xrpToDrops,
+  FIRELIGHT_VAULT,
+} from '../lib/instruction';
 import { STRATEGIES } from './strategies';
 
 const prepare = new Hono();
 
 const prepareSchema = z.object({
   xrplAddress: z.string().min(25).max(35),
-  strategy: z.string(),
+  strategy: z.string().optional().default('split'),
   amountXRP: z.string().transform(val => parseFloat(val)),
+  allocation: z.object({
+    firelight: z.number().min(0).max(100),
+    upshift: z.number().min(0).max(100),
+  }).optional(),
 });
 
 // POST /api/prepare - Prepare a transaction for signing
 prepare.post('/', zValidator('json', prepareSchema), async (c) => {
-  const { xrplAddress, strategy, amountXRP } = c.req.valid('json');
+  const { xrplAddress, strategy, amountXRP, allocation } = c.req.valid('json');
 
-  // Validate strategy
-  const selectedStrategy = STRATEGIES.find(s => s.id === strategy);
-  if (!selectedStrategy) {
-    return c.json({ error: 'Invalid strategy' }, 400);
-  }
+  // Default allocation: 50/50 split
+  const alloc = allocation || { firelight: 50, upshift: 50 };
 
-  if (!selectedStrategy.enabled) {
-    return c.json({ error: 'Strategy is not enabled' }, 400);
+  // Validate allocation totals 100%
+  if (alloc.firelight + alloc.upshift !== 100) {
+    return c.json({ error: 'Allocation must total 100%' }, 400);
   }
 
   // Validate amount (minimum 0.1 XRP for testing)
@@ -36,17 +43,46 @@ prepare.post('/', zValidator('json', prepareSchema), async (c) => {
     // Get operator address
     const destinationAddress = getOperatorAddress();
 
-    // Encode instruction memo
-    // For Firelight: use Firelight vault address
-    // Vault ID is 0 for default vault
-    // Lots = amount in XRP (simplified, real implementation would calculate lots)
+    // Calculate lots
     const lots = Math.round(amountXRP * 10); // 1 lot = 0.1 XRP for testing
-    const memo = encodeInstruction(
-      'firelight',
-      FIRELIGHT_VAULT,
-      0, // vault ID
-      lots
-    );
+
+    let memo: string;
+    let strategyInfo: { id: string; name: string; apy: string };
+
+    // Determine instruction encoding based on allocation
+    if (alloc.firelight === 100) {
+      // 100% Firelight
+      memo = encodeInstruction('firelight', FIRELIGHT_VAULT, 0, lots);
+      const firelightStrategy = STRATEGIES.find(s => s.id === 'firelight')!;
+      strategyInfo = {
+        id: 'firelight',
+        name: firelightStrategy.name,
+        apy: firelightStrategy.apy,
+      };
+    } else if (alloc.upshift === 100) {
+      // 100% Upshift
+      memo = encodeInstruction('upshift', FIRELIGHT_VAULT, 0, lots);
+      const upshiftStrategy = STRATEGIES.find(s => s.id === 'upshift')!;
+      strategyInfo = {
+        id: 'upshift',
+        name: upshiftStrategy.name,
+        apy: upshiftStrategy.apy,
+      };
+    } else {
+      // Split between protocols
+      memo = encodeSplitInstruction(alloc.firelight, lots);
+
+      // Calculate blended APY
+      const firelightApy = 8.5; // From STRATEGIES
+      const upshiftApy = 12.3; // From STRATEGIES
+      const blendedApy = (firelightApy * alloc.firelight + upshiftApy * alloc.upshift) / 100;
+
+      strategyInfo = {
+        id: 'split',
+        name: `${alloc.firelight}% Firelight / ${alloc.upshift}% Upshift`,
+        apy: `${blendedApy.toFixed(1)}%`,
+      };
+    }
 
     // Convert amount to drops
     const amountDrops = xrpToDrops(amountXRP);
@@ -63,11 +99,8 @@ prepare.post('/', zValidator('json', prepareSchema), async (c) => {
       memo,
       amountDrops,
       estimatedFees,
-      strategy: {
-        id: selectedStrategy.id,
-        name: selectedStrategy.name,
-        apy: selectedStrategy.apy,
-      },
+      strategy: strategyInfo,
+      allocation: alloc,
     });
   } catch (error: any) {
     console.error('[Prepare] Error:', error);

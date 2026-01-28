@@ -5,7 +5,7 @@ export type TransactionStatus =
   | 'completed'
   | 'failed';
 
-export type InstructionType = 'firelight';
+export type InstructionType = 'firelight' | 'upshift' | 'split';
 
 export interface Transaction {
   id: number;

@@ -3,9 +3,12 @@ import type { InstructionType } from '../types';
 // Instruction codes from system.md
 // Byte 0: High nibble = Type ID, Low nibble = Command ID
 // 0x10 = Firelight collateralReservationAndDeposit
-// 0x20 = Upshift collateralReservationAndDeposit (future)
+// 0x20 = Upshift collateralReservationAndDeposit
+// 0x30 = Split deposit (custom: split between Firelight and Upshift)
 export const INSTRUCTION_CODES = {
   firelight: 0x10,
+  upshift: 0x20,
+  split: 0x30,
 } as const;
 
 // Contract addresses
@@ -69,12 +72,34 @@ export function decodeInstruction(memoHex: string): {
   agentVaultAddress: string;
   vaultId: number;
   lots: number;
+  // Split instruction fields
+  firelightPercent?: number;
+  upshiftPercent?: number;
 } | null {
   try {
     const bytes = hexToBytes(memoHex.replace('0x', ''));
     if (bytes.length !== 32) return null;
 
     const instructionCode = bytes[0];
+
+    // Handle split instruction differently
+    if (instructionCode === INSTRUCTION_CODES.split) {
+      const firelightPercent = bytes[1];
+      const upshiftPercent = 100 - firelightPercent;
+      const lots = parseInt(bytesToHex(bytes.slice(26, 32)), 16);
+
+      return {
+        instructionCode,
+        walletId: 0,
+        agentVaultAddress: '0x0000000000000000000000000000000000000000',
+        vaultId: 0,
+        lots,
+        firelightPercent,
+        upshiftPercent,
+      };
+    }
+
+    // Standard instruction format
     const walletId = bytes[1];
     const agentVaultAddress = '0x' + bytesToHex(bytes.slice(2, 22));
     const vaultId = (bytes[22] << 24) | (bytes[23] << 16) | (bytes[24] << 8) | bytes[25];
@@ -97,7 +122,70 @@ export function decodeInstruction(memoHex: string): {
  */
 export function getInstructionType(code: number): InstructionType | null {
   if (code === INSTRUCTION_CODES.firelight) return 'firelight';
+  if (code === INSTRUCTION_CODES.upshift) return 'upshift';
+  if (code === INSTRUCTION_CODES.split) return 'split';
   return null;
+}
+
+/**
+ * Encode split instruction memo for XRPL payment
+ * Used when depositing to both Firelight and Upshift protocols
+ *
+ * Byte layout (32 bytes total):
+ * - Byte 0: Instruction code (0x30 for split)
+ * - Byte 1: Firelight percentage (0-100)
+ * - Bytes 2-21: Reserved (zeroed)
+ * - Bytes 22-25: Reserved (zeroed)
+ * - Bytes 26-31: Total value in lots (6 bytes)
+ */
+export function encodeSplitInstruction(
+  firelightPercent: number,
+  totalLots: number
+): string {
+  const buffer = new Uint8Array(32);
+
+  // Byte 0: Split instruction code
+  buffer[0] = INSTRUCTION_CODES.split;
+
+  // Byte 1: Firelight percentage (0-100)
+  buffer[1] = Math.min(100, Math.max(0, Math.round(firelightPercent)));
+
+  // Bytes 2-25: Reserved (already zeroed)
+
+  // Bytes 26-31: Total value in lots (6 bytes, big endian)
+  const lotsHex = totalLots.toString(16).padStart(12, '0');
+  for (let i = 0; i < 6; i++) {
+    buffer[26 + i] = parseInt(lotsHex.substring(i * 2, i * 2 + 2), 16);
+  }
+
+  return bytesToHex(buffer);
+}
+
+/**
+ * Decode split instruction from XRPL payment memo
+ */
+export function decodeSplitInstruction(memoHex: string): {
+  firelightPercent: number;
+  upshiftPercent: number;
+  totalLots: number;
+} | null {
+  try {
+    const bytes = hexToBytes(memoHex.replace('0x', ''));
+    if (bytes.length !== 32) return null;
+    if (bytes[0] !== INSTRUCTION_CODES.split) return null;
+
+    const firelightPercent = bytes[1];
+    const upshiftPercent = 100 - firelightPercent;
+    const totalLots = parseInt(bytesToHex(bytes.slice(26, 32)), 16);
+
+    return {
+      firelightPercent,
+      upshiftPercent,
+      totalLots,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function hexToBytes(hex: string): Uint8Array {

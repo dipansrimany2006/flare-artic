@@ -13,14 +13,13 @@ const STRATEGIES: Strategy[] = [
     enabled: true,
     instructionCode: 0x10,
   },
-  // Future strategies (disabled for MVP)
   {
     id: 'upshift',
     name: 'Upshift Vault',
     description: 'Deposit FXRP to earn yield from carry trades, AMM liquidity, and Firelight integration.',
     apy: '4-10%',
     risk: 'medium',
-    enabled: false,
+    enabled: true,
     instructionCode: 0x20,
   },
 ];

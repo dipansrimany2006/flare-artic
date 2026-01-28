@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "XRPfi - 1-Click Yield Maximizer",
+  title: "Artic-Protocol",
   description: "Maximize yield on your XRP with Flare DeFi. One transaction, automatic bridging and staking.",
 };
 
