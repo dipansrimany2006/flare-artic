@@ -129,8 +129,8 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
     return (
       <div className="text-center space-y-6">
         <div className="w-16 h-16 mx-auto relative">
-          <div className="absolute inset-0 border-4 border-blue-200 dark:border-blue-900 rounded-full" />
-          <div className="absolute inset-0 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="absolute inset-0 border-4 border-amber-200 dark:border-amber-900 rounded-full" />
+          <div className="absolute inset-0 border-4 border-amber-500 border-t-transparent rounded-full animate-spin" />
         </div>
 
         <div>
@@ -150,7 +150,7 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
             href={getExplorerUrl(txHash, network)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="inline-flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400 hover:underline"
           >
             View on XRPL Explorer
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +174,7 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
   // Confirm step
   return (
     <div className="space-y-6">
-      <div className="p-6 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl space-y-4">
+      <div className="p-6 bg-zinc-50 dark:bg-neutral-800 rounded-xl space-y-4">
         <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
           Confirm Your Deposit
         </h3>
@@ -188,13 +188,13 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
           </div>
 
           {/* Allocation Breakdown */}
-          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3 space-y-2">
+          <div className="border-t border-zinc-200 dark:border-neutral-700 pt-3 space-y-2">
             <span className="text-xs text-zinc-500 dark:text-zinc-500 uppercase tracking-wider">Allocation</span>
 
             {allocation.firelight > 0 && (
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-orange-500" />
+                  <div className="w-3 h-3 rounded-full bg-amber-500" />
                   <span className="text-zinc-600 dark:text-zinc-400">Firelight ({allocation.firelight}%)</span>
                 </div>
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -206,7 +206,7 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
             {allocation.upshift > 0 && (
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-purple-500" />
+                  <div className="w-3 h-3 rounded-full bg-yellow-500" />
                   <span className="text-zinc-600 dark:text-zinc-400">Upshift ({allocation.upshift}%)</span>
                 </div>
                 <span className="font-medium text-zinc-900 dark:text-zinc-100">
@@ -216,10 +216,10 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
             )}
           </div>
 
-          <div className="border-t border-zinc-200 dark:border-zinc-700 pt-3">
+          <div className="border-t border-zinc-200 dark:border-neutral-700 pt-3">
             <div className="flex justify-between">
               <span className="text-zinc-600 dark:text-zinc-400">Blended APY</span>
-              <span className="font-medium text-green-600 dark:text-green-400">
+              <span className="font-medium text-amber-600 dark:text-amber-400">
                 {weightedApy.toFixed(1)}%
               </span>
             </div>
@@ -234,12 +234,12 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+      <div className="p-4 bg-amber-50 dark:bg-amber-500/10 rounded-lg border border-transparent dark:border-amber-500/20">
         <div className="flex gap-3">
-          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <p className="text-sm text-blue-800 dark:text-blue-200">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
             Your FXRP will be deposited to the selected protocols. You&apos;ll receive yield-bearing tokens in return.
           </p>
         </div>
@@ -249,14 +249,14 @@ export function TransactionFlow({ onBack, onSuccess }: TransactionFlowProps) {
         <button
           onClick={onBack}
           disabled={isLoading}
-          className="flex-1 py-3 px-4 border-2 border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+          className="flex-1 py-3 px-4 border-2 border-zinc-200 dark:border-neutral-700 text-zinc-700 dark:text-zinc-300 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50"
         >
           Back
         </button>
         <button
           onClick={handleSign}
           disabled={isLoading || !preparedTx}
-          className="flex-1 py-3 px-4 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+          className="flex-1 py-3 px-4 bg-amber-500 hover:bg-amber-600 disabled:bg-amber-400 text-black font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
         >
           {isLoading ? (
             <>
