@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "WebFetch(domain:dev.flare.network)"
+      "WebFetch(domain:dev.flare.network)",
+      "WebSearch"
     ]
   }
 }

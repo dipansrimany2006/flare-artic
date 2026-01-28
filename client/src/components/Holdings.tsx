@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useWalletStore } from '@/store/wallet';
 import { getHoldings } from '@/lib/api';
 
@@ -42,8 +43,9 @@ export function Holdings() {
   }
 
   const hasHoldings =
-    parseFloat(holdings.holdings.fxrpBalance) > 0 ||
-    parseFloat(holdings.holdings.stXrpBalance) > 0;
+    parseFloat(holdings.holdings.fxrp.balance) > 0 ||
+    parseFloat(holdings.holdings.firelight.shares) > 0 ||
+    parseFloat(holdings.holdings.upshift.shares) > 0;
 
   return (
     <div className="p-6 bg-white dark:bg-neutral-900 rounded-xl border border-zinc-200 dark:border-amber-500/20">
@@ -64,12 +66,17 @@ export function Holdings() {
         </div>
       ) : (
         <div className="space-y-4">
-          {parseFloat(holdings.holdings.stXrpBalance) > 0 && (
+          {/* Firelight stXRP Holdings */}
+          {parseFloat(holdings.holdings.firelight.shares) > 0 && (
             <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-neutral-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-yellow-500 rounded-full flex items-center justify-center text-black font-bold text-sm">
-                  st
-                </div>
+                <Image
+                  src="/firelight.png"
+                  alt="Firelight"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
                 <div>
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">stXRP</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">Firelight Staking</p>
@@ -77,21 +84,53 @@ export function Holdings() {
               </div>
               <div className="text-right">
                 <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {parseFloat(holdings.holdings.stXrpBalance).toFixed(4)}
+                  {parseFloat(holdings.holdings.firelight.shares).toFixed(4)}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  ~{parseFloat(holdings.holdings.stXrpBalance).toFixed(2)} XRP
+                  ~{parseFloat(holdings.holdings.firelight.assetsValue).toFixed(2)} XRP
                 </p>
               </div>
             </div>
           )}
 
-          {parseFloat(holdings.holdings.fxrpBalance) > 0 && (
+          {/* Upshift earnXRP Holdings */}
+          {parseFloat(holdings.holdings.upshift.shares) > 0 && (
             <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-neutral-800 rounded-lg">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center text-black font-bold text-sm">
-                  FX
+                <Image
+                  src="/upshift-logomark.svg"
+                  alt="Upshift"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-zinc-100">earnXRP</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Upshift Vault</p>
                 </div>
+              </div>
+              <div className="text-right">
+                <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  {parseFloat(holdings.holdings.upshift.shares).toFixed(4)}
+                </p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  ~{parseFloat(holdings.holdings.upshift.assetsValue).toFixed(2)} XRP
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* FXRP Holdings (undeposited) */}
+          {parseFloat(holdings.holdings.fxrp.balance) > 0 && (
+            <div className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-neutral-800 rounded-lg">
+              <div className="flex items-center gap-3">
+                <Image
+                  src="/FXRP.jpg"
+                  alt="FXRP"
+                  width={40}
+                  height={40}
+                  className="rounded-full"
+                />
                 <div>
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">FXRP</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">Wrapped XRP on Flare</p>
@@ -99,10 +138,10 @@ export function Holdings() {
               </div>
               <div className="text-right">
                 <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-                  {parseFloat(holdings.holdings.fxrpBalance).toFixed(4)}
+                  {parseFloat(holdings.holdings.fxrp.balance).toFixed(4)}
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  ~{parseFloat(holdings.holdings.fxrpBalance).toFixed(2)} XRP
+                  ~{parseFloat(holdings.holdings.fxrp.valueXRP).toFixed(2)} XRP
                 </p>
               </div>
             </div>
@@ -117,18 +156,18 @@ export function Holdings() {
             </div>
           </div>
 
-          {holdings.flareSmartAccount && (
+          {holdings.flareAddress && (
             <div className="pt-4 border-t border-zinc-200 dark:border-neutral-700">
               <p className="text-xs text-zinc-500 dark:text-zinc-500 mb-1">
-                Flare Smart Account
+                Flare Address
               </p>
               <a
-                href={`https://coston2-explorer.flare.network/address/${holdings.flareSmartAccount}`}
+                href={`https://coston2-explorer.flare.network/address/${holdings.flareAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-amber-600 dark:text-amber-400 hover:underline font-mono"
               >
-                {holdings.flareSmartAccount.slice(0, 10)}...{holdings.flareSmartAccount.slice(-8)}
+                {holdings.flareAddress.slice(0, 10)}...{holdings.flareAddress.slice(-8)}
               </a>
             </div>
           )}
