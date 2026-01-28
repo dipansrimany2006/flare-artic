@@ -9,6 +9,11 @@ export interface Strategy {
   enabled: boolean;
 }
 
+export interface Allocation {
+  firelight: number;
+  upshift: number;
+}
+
 export interface PrepareResponse {
   destinationAddress: string;
   memo: string;
@@ -23,6 +28,7 @@ export interface PrepareResponse {
     name: string;
     apy: string;
   };
+  allocation: Allocation;
 }
 
 export interface StatusResponse {
@@ -40,10 +46,22 @@ export interface StatusResponse {
 
 export interface HoldingsResponse {
   xrplAddress: string;
-  flareSmartAccount: string | null;
+  flareAddress: string;
   holdings: {
-    fxrpBalance: string;
-    stXrpBalance: string;
+    fxrp: {
+      balance: string;
+      valueXRP: string;
+    };
+    firelight: {
+      shares: string;
+      assetsValue: string;
+      exchangeRate: string;
+    };
+    upshift: {
+      shares: string;
+      assetsValue: string;
+      exchangeRate: string;
+    };
     totalValueXRP: string;
   };
   message?: string;
@@ -58,13 +76,13 @@ export async function getStrategies(): Promise<Strategy[]> {
 
 export async function prepareTransaction(
   xrplAddress: string,
-  strategy: string,
-  amountXRP: string
+  amountXRP: string,
+  allocation: Allocation
 ): Promise<PrepareResponse> {
   const response = await fetch(`${API_URL}/api/prepare`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ xrplAddress, strategy, amountXRP }),
+    body: JSON.stringify({ xrplAddress, amountXRP, allocation }),
   });
   if (!response.ok) {
     const error = await response.json();
